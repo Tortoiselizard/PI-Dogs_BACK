@@ -6,8 +6,14 @@ const {Op} = require("sequelize")
 const {YOUR_API_KEY} = process.env
 
 const router = Router()
+let idDog
 
-let idDog = 1
+async function updateIdDog () {
+    const arrayDogs = await Dog.findAll()
+    idDog = arrayDogs.length+1
+}
+updateIdDog()
+
 const regNumber = /[^0-9-.– ]/
 
 router.post("/", async(req, res) => {
@@ -40,48 +46,43 @@ router.get("/", async (req, res) => {
     let dogsArrayApi = []
     let dogsArrayDB = []
     try {
-        if (location === "API" || location === undefined || location === "TD") {
+        if (location === "API" || location === undefined) {
             dogsArrayApi = await request({
                 uri: RUTA,
                 json: true
-            }).then(data => data.map(dog => ({
-                id: dog.id,
-                name: dog.name,
-                height: dog.height.imperial,
-                weight: regNumber.test(dog.weight.imperial)?
-                    dog.weight.imperial.replace(dog.weight.imperial.split("-").find(str => regNumber.test(str)).trim(), dog.weight.imperial.split("-").find(str => !regNumber.test(str)).trim())
-                    :
-                    dog.weight.imperial,
-                // weight: dog.weight.imperial,
-                life_span: dog.life_span,
-                temperament: dog.temperament,
-                image: dog.image.url
-            }))).catch(error => {throw new Error("Ha ocurrido un problema en el enlace con el servidor de la API")})
+            })
+                .then(data => {
+                    if (!name) {return data}
+                    return data.filter(dog => {
+                    return dog.name.toLowerCase().includes(name.toLowerCase())
+                })})
+                .then(dog => dog.map(dog => ({
+                    id: dog.id,
+                    name: dog.name,
+                    breed_group: dog.breed_group,
+                    life_span: dog.life_span,
+                    temperament: dog.temperament,
+                    image: dog.image.url,
+                    weight: dog.weight.imperial,
+                    height: dog.height.imperial
+                })))
+                .catch(error => {throw new Error("Ha ocurrido un problema en el enlace con el servidor de la API")})
         }
-        if (location === "DB" || location === undefined || location === "TD") {
-                dogsArrayDB = (await Dog.findAll({
+        if (location === "DB" || location === undefined) {
+            dogsArrayDB = await Dog.findAll({
+                where: {
+                    name: {
+                        [Op.like]:  `%${name || ""}%`
+                    }
+                },
                 attributes: {exclude: ["createdAt", "updatedAt"]},
                 include: Temperament
-            }).catch(error => { throw new Error("Ha ocurrido un problema en el enlace con la Base de Datos del servidor")}))
-            dogsArrayDB = dogsArrayDB.map(dog => ({...dog.dataValues, 
-                temperament: dog.temperaments.map(t => t.dataValues.name).join(", ")
-            }))
-        }
-       
-        const dogsArray = [...dogsArrayApi, ...dogsArrayDB]
-        // if (!dogsArray.length) {    
-        //     throw new Error("este es el nuevo error")
-        // }
-        if (name) {
-            var arrayDogs = await dogsArray.filter(dog => {
-                if (dog.name.toLowerCase().includes(name.toLowerCase())) return true
             })
-            if (!arrayDogs.length) return res.status(201).json(`No se ha encontrado ninguna raza de perro con el nombre "${name}"`)
+                .catch(error => { throw new Error("Ha ocurrido un problema en el enlace con la Base de Datos del servidor")})
+            dogsArrayDB = dogsArrayDB.map(dog => ({...dog.dataValues, temperaments: dog.temperaments.map(t => t.dataValues.name).join(", ")}))
         }
-        else {
-            var arrayDogs = dogsArray
-        }  
-        res.status(200).send(arrayDogs)
+        const dogsArray = [...dogsArrayApi, ...dogsArrayDB]
+        res.status(200).send(dogsArray)
     }
     catch(error) {
         res.status(400).json(error.message)
