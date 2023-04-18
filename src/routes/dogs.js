@@ -144,4 +144,11 @@ router.get("/:raza_perro", async(req, res) => {
     }
 })
 
+router.delete("/", async(req, res) => {
+    const {name, id} = req.query
+    // console.log(name, id)
+    
+    res.status(200).send("estoy en el borrado de perros")
+})
+
 module.exports=router
