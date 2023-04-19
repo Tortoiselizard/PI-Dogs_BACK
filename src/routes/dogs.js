@@ -1,5 +1,5 @@
 require('dotenv').config()
-const {Router} = require("express")
+const {Router, response} = require("express")
 const request = require("request-promise")
 const {Dog, Temperament} =require("../db")
 const {Op} = require("sequelize")
@@ -10,7 +10,9 @@ let idDog
 
 async function updateIdDog () {
     const arrayDogs = await Dog.findAll()
-    idDog = arrayDogs.length+1
+    idDog = Number(arrayDogs.reduce((acc,cur) => {
+        return acc <= cur.dataValues.id[0]? cur.dataValues.id[0]: acc
+    }, arrayDogs[0].dataValues.id[0])) +1
 }
 updateIdDog()
 
@@ -145,10 +147,19 @@ router.get("/:raza_perro", async(req, res) => {
 })
 
 router.delete("/", async(req, res) => {
-    const {name, id} = req.query
-    // console.log(name, id)
-    
-    res.status(200).send("estoy en el borrado de perros")
+    const {id} = req.query
+    await Dog.destroy({
+        where: {id}
+    })
+        .then(response => {
+            if (response === 0) {
+                res.status(200).send(`No existe un perro con el id: ${id}`)    
+            }
+            else if (response > 0) {
+                res.status(200).send(`El perro fue eliminado exitosamente`)
+            }
+        })
+        .catch(error => {console.error("Error", error)})
 })
 
 module.exports=router
