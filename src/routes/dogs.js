@@ -42,6 +42,20 @@ router.post("/", async(req, res) => {
     }
 })
 
+router.put("/", async(req,res) => {
+    const {id, name, height, weight, life_span, image, temperaments} = req.body
+    try {
+        const dogUpdate = await Dog.update(
+            req.body,
+            {where: {id}}
+        ).then(dog => res.status(200).send("El perro se ha modificado exitosamente"))
+        .catch(error => console.error("Error", error))
+    }
+    catch(error) {
+        res.status(400).json(error.message)
+    }
+})
+
 router.get("/", async (req, res) => {
     const {name, location} = req.query
     const RUTA = `https://api.thedogapi.com/v1/breeds?api_key=${YOUR_API_KEY}`
@@ -153,10 +167,10 @@ router.delete("/", async(req, res) => {
     })
         .then(response => {
             if (response === 0) {
-                res.status(200).send(`No existe un perro con el id: ${id}`)    
+                return res.status(200).send(`No existe un perro con el id: ${id}`)    
             }
             else if (response > 0) {
-                res.status(200).send(`El perro fue eliminado exitosamente`)
+                return res.status(200).send(`El perro fue eliminado exitosamente`)
             }
         })
         .catch(error => {console.error("Error", error)})
