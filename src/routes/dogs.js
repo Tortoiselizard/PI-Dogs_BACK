@@ -44,11 +44,19 @@ router.post("/", async(req, res) => {
 
 router.put("/", async(req,res) => {
     const {id, name, height, weight, life_span, image, temperaments} = req.body
+    const objectDogProperties = {
+        name, height, weight, life_span, image
+    }
     try {
         const dogUpdate = await Dog.update(
-            req.body,
+            objectDogProperties,
             {where: {id}}
-        ).then(dog => res.status(200).send("El perro se ha modificado exitosamente"))
+        ).then(async(response) => {
+            if (Array.isArray(temperaments) && temperaments.length) {
+                const dog = await Dog.findOne({where: {id}})
+                await dog.setTemperaments(temperaments)
+            }
+            res.status(200).send("El perro se ha modificado exitosamente")})
         .catch(error => console.error("Error", error))
     }
     catch(error) {
