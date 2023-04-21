@@ -1,5 +1,5 @@
 require('dotenv').config()
-const {Router} = require("express")
+const {Router, response} = require("express")
 const request = require("request-promise")
 const {Dog, Temperament} =require("../db")
 const {Op} = require("sequelize")
@@ -10,7 +10,9 @@ let idDog
 
 async function updateIdDog () {
     const arrayDogs = await Dog.findAll()
-    idDog = arrayDogs.length+1
+    idDog = Number(arrayDogs.reduce((acc,cur) => {
+        return acc <= cur.dataValues.id[0]? cur.dataValues.id[0]: acc
+    }, arrayDogs[0].dataValues.id[0])) +1
 }
 updateIdDog()
 
@@ -36,6 +38,28 @@ router.post("/", async(req, res) => {
             throw new Error("Los atributos: name, height y weight no pueden ser nulos")
         }
     } catch(error) {
+        res.status(400).json(error.message)
+    }
+})
+
+router.put("/", async(req,res) => {
+    const {id, name, height, weight, life_span, image, temperaments} = req.body
+    const objectDogProperties = {
+        name, height, weight, life_span, image
+    }
+    try {
+        const dogUpdate = await Dog.update(
+            objectDogProperties,
+            {where: {id}}
+        ).then(async(response) => {
+            if (Array.isArray(temperaments) && temperaments.length) {
+                const dog = await Dog.findOne({where: {id}})
+                await dog.setTemperaments(temperaments)
+            }
+            res.status(200).send("El perro se ha modificado exitosamente")})
+        .catch(error => console.error("Error", error))
+    }
+    catch(error) {
         res.status(400).json(error.message)
     }
 })
@@ -142,6 +166,22 @@ router.get("/:raza_perro", async(req, res) => {
     catch(error) {
         res.status(400).send(error.message)
     }
+})
+
+router.delete("/", async(req, res) => {
+    const {id} = req.query
+    await Dog.destroy({
+        where: {id}
+    })
+        .then(response => {
+            if (response === 0) {
+                return res.status(200).send(`No existe un perro con el id: ${id}`)    
+            }
+            else if (response > 0) {
+                return res.status(200).send(`El perro fue eliminado exitosamente`)
+            }
+        })
+        .catch(error => {console.error("Error", error)})
 })
 
 module.exports=router
