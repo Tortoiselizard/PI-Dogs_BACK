@@ -13,7 +13,7 @@ router.post("/", async (req, res) => {
         if (email) {
             const user = await User.findAll({ where: { email } })
             if (user.length) throw new Error(`Ya existe una cuenta con este email`)
-            const newUser = await User.create({ ...req.body, name: name || email })
+            const newUser = await User.create({ ...req.body, name: name || "user" })
             return res.status(200).send(newUser)
         }
         else {
