@@ -9,10 +9,14 @@ const router = Router()
 let idDog
 
 async function updateIdDog () {
-    const arrayDogs = await Dog.findAll()
-    idDog = Number(arrayDogs.reduce((acc,cur) => {
-        return acc <= cur.dataValues.id[0]? cur.dataValues.id[0]: acc
-    }, arrayDogs[0].dataValues.id[0])) +1
+    const dogs = await Dog.findAll()
+    if (!dogs.length) {
+        idDog = 1
+    }else {
+        idDog = Number(dogs.reduce((acc,cur) => {
+            return acc <= cur.dataValues.id[0]? cur.dataValues.id[0]: acc
+        }, dogs[0].dataValues.id[0])) +1
+    }
 }
 updateIdDog()
 
@@ -67,11 +71,11 @@ router.put("/", async(req,res) => {
 router.get("/", async (req, res) => {
     const {name, location} = req.query
     const RUTA = `https://api.thedogapi.com/v1/breeds?api_key=${YOUR_API_KEY}`
-    let dogsArrayApi = []
-    let dogsArrayDB = []
+    let dogsApi = []
+    let dogsDB = []
     try {
         if (location === "API" || location === undefined) {
-            dogsArrayApi = await request({
+            dogsApi = await request({
                 uri: RUTA,
                 json: true
             })
@@ -93,7 +97,7 @@ router.get("/", async (req, res) => {
                 .catch(error => {throw new Error("Ha ocurrido un problema en el enlace con el servidor de la API")})
         }
         if (location === "DB" || location === undefined) {
-            dogsArrayDB = await Dog.findAll({
+            dogsDB = await Dog.findAll({
                 where: {
                     name: {
                         [Op.like]:  `%${name || ""}%`
@@ -103,9 +107,9 @@ router.get("/", async (req, res) => {
                 include: Temperament
             })
                 .catch(error => { throw new Error("Ha ocurrido un problema en el enlace con la Base de Datos del servidor")})
-            dogsArrayDB = dogsArrayDB.map(dog => ({...dog.dataValues, temperaments: dog.temperaments.map(t => t.dataValues.name).join(", ")}))
+            dogsDB = dogsDB.map(dog => ({...dog.dataValues, temperaments: dog.temperaments.map(t => t.dataValues.name).join(", ")}))
         }
-        const dogsArray = [...dogsArrayApi, ...dogsArrayDB]
+        const dogsArray = [...dogsApi, ...dogsDB]
         res.status(200).send(dogsArray)
     }
     catch(error) {
