@@ -98,7 +98,7 @@ router.get('/', async (req, res) => {
       dogsDB = await Dog.findAll({
         where: {
           name: {
-            [Op.like]: `%${name.toLowerCase() || ''}%`
+            [Op.like]: `%${name[0].toUpperCase() + name.slice(1).toLowerCase() || ''}%`
           }
         },
         attributes: { exclude: ['createdAt', 'updatedAt'] },
