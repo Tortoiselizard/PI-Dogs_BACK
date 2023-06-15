@@ -4,7 +4,10 @@
     "es6": true,
     "mocha": true
   },
-  "extends": "airbnb/base",
+  "extends": [
+    // "airbnb/base",
+    "./node_modules/standard/eslintrc.json"
+  ],
   "settings": {
     "import/resolver": {
       "node": {
