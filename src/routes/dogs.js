@@ -99,6 +99,9 @@ router.get('/', async (req, res) => {
         where: {
           name: {
             [Op.like]: `%${(name && name[0].toUpperCase() + name.slice(1).toLowerCase()) || ''}%`
+          },
+          image: {
+            [Op.not]: 'true'
           }
         },
         attributes: { exclude: ['createdAt', 'updatedAt'] },
