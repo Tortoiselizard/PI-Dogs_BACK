@@ -6,19 +6,6 @@ const { Op } = require('sequelize')
 const { YOUR_API_KEY } = process.env
 
 const router = Router()
-let idDog
-
-async function updateIdDog () {
-  const dogs = await Dog.findAll()
-  if (!dogs.length) {
-    idDog = 1
-  } else {
-    idDog = Number(dogs.reduce((acc, cur) => {
-      return acc <= cur.dataValues.id[0] ? cur.dataValues.id[0] : acc
-    }, dogs[0].dataValues.id[0])) + 1
-  }
-}
-updateIdDog()
 
 router.post('/', async (req, res) => {
   const { name, height, weight, temperaments } = req.body
@@ -32,7 +19,7 @@ router.post('/', async (req, res) => {
           if (!temp.length) throw new Error(`El temperamento ${t} no existe`)
         }
       }
-      const newDog = await Dog.create({ id: idDog++, ...req.body })
+      const newDog = await Dog.create({ ...req.body })
       await newDog.addTemperaments(temperaments)
       return res.status(200).send(newDog)
     } else {
@@ -108,8 +95,16 @@ router.get('/', async (req, res) => {
         attributes: { exclude: ['createdAt', 'updatedAt'] },
         include: Temperament
       })
+        .then(listDogs => listDogs.map(dog => ({
+          id: dog.id,
+          name: dog.name,
+          height: dog.height,
+          weight: dog.weight,
+          life_span: dog.life_span,
+          image: dog.image,
+          temperaments: dog.temperaments.map(t => t.dataValues.name).join(', ')
+        })))
         .catch(error => error.message)
-      dogsDB = dogsDB.map(dog => ({ ...dog.dataValues, temperaments: dog.temperaments.map(t => t.dataValues.name).join(', ') }))
     }
     const dogsArray = [...dogsApi, ...dogsDB]
     res.status(200).send(dogsArray)
