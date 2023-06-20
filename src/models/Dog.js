@@ -8,11 +8,7 @@ module.exports = (sequelize) => {
       type: DataTypes.INTEGER,
       primaryKey: true,
       allowNull: false,
-      autoIncrement: true,
-      get () {
-        const idNumber = this.getDataValue('id')
-        return `${idNumber}db`
-      }
+      autoIncrement: true
     },
     name: {
       type: DataTypes.STRING,
@@ -27,7 +23,7 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: false
     },
-    life_span: {
+    lifeSpan: {
       type: DataTypes.STRING
     },
     image: {
