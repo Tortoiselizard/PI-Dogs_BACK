@@ -6,34 +6,25 @@ const { Op } = require('sequelize')
 const { YOUR_API_KEY } = process.env
 
 const router = Router()
-let idDog
-
-async function updateIdDog () {
-  const dogs = await Dog.findAll()
-  if (!dogs.length) {
-    idDog = 1
-  } else {
-    idDog = Number(dogs.reduce((acc, cur) => {
-      return acc <= cur.dataValues.id[0] ? cur.dataValues.id[0] : acc
-    }, dogs[0].dataValues.id[0])) + 1
-  }
-}
-updateIdDog()
 
 router.post('/', async (req, res) => {
   const { name, height, weight, temperaments } = req.body
   try {
     if (name && height && weight) {
       const dog = await Dog.findAll({ where: { name } })
+        .catch(error => { throw new Error(error.message) })
       if (dog.length) throw new Error(`El nombre de raza ${name} ya existe`)
-      if (temperaments) {
+      if (temperaments.length) {
         for (const t of temperaments) {
           const temp = await Temperament.findAll({ where: { id: Number(t) } })
+            .catch(error => { throw new Error(error.message) })
           if (!temp.length) throw new Error(`El temperamento ${t} no existe`)
         }
       }
-      const newDog = await Dog.create({ id: idDog++, ...req.body })
+      const newDog = await Dog.create({ ...req.body })
+        .catch(error => { throw new Error(error.message) })
       await newDog.addTemperaments(temperaments)
+        .catch(error => { throw new Error(error.message) })
       return res.status(200).send(newDog)
     } else {
       throw new Error('Los atributos: name, height y weight no pueden ser nulos')
@@ -48,18 +39,19 @@ router.put('/', async (req, res) => {
   const objectDogProperties = {
     name, height, weight, lifeSpan, image
   }
+  const numberId = Number(id.slice(0, id.indexOf('db')))
   try {
     await Dog.update(
       objectDogProperties,
-      { where: { id } }
-    ).then(async (response) => {
+      { where: { id: numberId } }
+    ).then(async () => {
       if (Array.isArray(temperaments) && temperaments.length) {
-        const dog = await Dog.findOne({ where: { id } })
+        const dog = await Dog.findOne({ where: { id: numberId } })
         await dog.setTemperaments(temperaments)
       }
       res.status(200).send('El perro se ha modificado exitosamente')
     })
-      .catch(error => console.error('Error', error))
+      .catch(error => { throw new Error(error.message) })
   } catch (error) {
     res.status(400).json(error.message)
   }
@@ -92,7 +84,7 @@ router.get('/', async (req, res) => {
           weight: dog.weight.imperial,
           height: dog.height.imperial
         })))
-        .catch(error => error.message)
+        .catch(error => { throw new Error(error.message) })
     }
     if (location === 'DB' || location === undefined) {
       dogsDB = await Dog.findAll({
@@ -108,8 +100,16 @@ router.get('/', async (req, res) => {
         attributes: { exclude: ['createdAt', 'updatedAt'] },
         include: Temperament
       })
-        .catch(error => error.message)
-      dogsDB = dogsDB.map(dog => ({ ...dog.dataValues, temperaments: dog.temperaments.map(t => t.dataValues.name).join(', ') }))
+        .then(listDogs => listDogs.map(dog => ({
+          id: `${dog.id}db`,
+          name: dog.name,
+          height: dog.height,
+          weight: dog.weight,
+          lifeSpan: dog.lifeSpan,
+          image: dog.image,
+          temperament: dog.temperaments.map(t => t.dataValues.name).join(', ')
+        })))
+        .catch(error => { throw new Error(error.message) })
     }
     const dogsArray = [...dogsApi, ...dogsDB]
     res.status(200).send(dogsArray)
@@ -142,7 +142,7 @@ router.get('/:razaPerro', async (req, res) => {
           return null
         }
       })
-      .catch((error) => error.message)
+      .catch((error) => { throw new Error(error.message) })
     const dogFindedDB = (await Dog.findAll({
       where: {
         name: {
@@ -151,7 +151,7 @@ router.get('/:razaPerro', async (req, res) => {
       },
       attributes: { exclude: ['createdAt', 'updatedAt'] },
       include: Temperament
-    }).catch(() => { throw new Error('Ha ocurrido un problema en el enlace con la base de datos de la aplicación') }))
+    }).catch(error => { throw new Error(error.message) }))
     const totalDogsFinded = [...dogFindedAPI, ...dogFindedDB].filter(dog => {
       return typeof (dog.image) === 'string'
     })
@@ -163,17 +163,22 @@ router.get('/:razaPerro', async (req, res) => {
 
 router.delete('/', async (req, res) => {
   const { id } = req.query
-  await Dog.destroy({
-    where: { id }
-  })
-    .then(response => {
-      if (response === 0) {
-        return res.status(200).send(`No existe un perro con el id: ${id}`)
-      } else if (response > 0) {
-        return res.status(200).send('El perro fue eliminado exitosamente')
-      }
+  const numberId = Number(id.slice(0, id.indexOf('db')))
+  try {
+    await Dog.destroy({
+      where: { id: numberId }
     })
-    .catch(error => { console.error('Error', error) })
+      .then(response => {
+        if (response === 0) {
+          return res.status(200).send(`No existe un perro con el id: ${id}`)
+        } else if (response > 0) {
+          return res.status(200).send('El perro fue eliminado exitosamente')
+        }
+      })
+      .catch(error => { throw new Error(error.message) })
+  } catch (error) {
+    res.status(400).send(error.message)
+  }
 })
 
 module.exports = router
