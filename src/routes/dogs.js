@@ -14,7 +14,6 @@ router.post('/', async (req, res) => {
       const dog = await Dog.findAll({ where: { name } })
         .catch(error => { throw new Error(error.message) })
       if (dog.length) throw new Error(`El nombre de raza ${name} ya existe`)
-      console.log('ya verifique el perro')
       if (temperaments.length) {
         for (const t of temperaments) {
           const temp = await Temperament.findAll({ where: { id: Number(t) } })
@@ -22,13 +21,10 @@ router.post('/', async (req, res) => {
           if (!temp.length) throw new Error(`El temperamento ${t} no existe`)
         }
       }
-      console.log('ya verifique el temperamento')
       const newDog = await Dog.create({ ...req.body })
         .catch(error => { throw new Error(error.message) })
-      console.log('ya cree el perro')
       await newDog.addTemperaments(temperaments)
         .catch(error => { throw new Error(error.message) })
-      console.log('ya añadi el temperamento')
       return res.status(200).send(newDog)
     } else {
       throw new Error('Los atributos: name, height y weight no pueden ser nulos')
