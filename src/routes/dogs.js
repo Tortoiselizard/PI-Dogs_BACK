@@ -122,14 +122,15 @@ router.get('/:razaPerro', async (req, res) => {
   let { razaPerro } = req.params
   razaPerro = razaPerro.trim()
   const RUTA = `https://api.thedogapi.com/v1/breeds/search?q=${razaPerro}&api_key=${YOUR_API_KEY}`
+  let dogFindedAPI, dogFindedDB
   try {
-    let dogFinded = await request({
+    dogFindedAPI = await request({
       uri: RUTA,
       json: true
     })
       .then(data => {
         if (data.length) {
-          return data.map(dog => ({
+          const listDogs = data.filter(dog => dog.name === razaPerro).map(dog => ({
             id: dog.id,
             name: dog.name,
             height: dog.height.imperial,
@@ -138,13 +139,15 @@ router.get('/:razaPerro', async (req, res) => {
             temperament: dog.temperament,
             image: dog.reference_image_id && `https://cdn2.thedogapi.com/images/${dog.reference_image_id}.jpg`
           }))
+          if (!listDogs.length) return null
+          return listDogs
         } else {
           return null
         }
       })
       .catch((error) => { throw new Error(error.message) })
-    if (!dogFinded || !dogFinded[0].image) {
-      dogFinded = (await Dog.findAll({
+    if (!dogFindedAPI || !dogFindedAPI[0].image) {
+      dogFindedDB = (await Dog.findAll({
         where: {
           name: {
             [Op.like]: `%${razaPerro}%`
@@ -153,20 +156,27 @@ router.get('/:razaPerro', async (req, res) => {
         attributes: { exclude: ['createdAt', 'updatedAt'] },
         include: Temperament
       })
-        .then(listDogs => listDogs.length
-          ? listDogs.map(dog => ({
-            id: `${dog.id}db`,
-            name: dog.name,
-            height: dog.height,
-            weight: dog.weight,
-            lifeSpan: dog.lifeSpan,
-            image: dog.image,
-            temperament: dog.temperaments.map(t => t.dataValues.name).join(', ')
-          }))
-          : null)
+        .then(listDogs => {
+          if (listDogs.length) {
+            const arrayDogs = listDogs.filter(dog => dog.name === razaPerro).map(dog => ({
+              id: `${dog.id}db`,
+              name: dog.name,
+              height: dog.height,
+              weight: dog.weight,
+              lifeSpan: dog.lifeSpan,
+              image: dog.image,
+              temperament: dog.temperaments.map(t => t.dataValues.name).join(', ')
+            }))
+            if (arrayDogs.length) return arrayDogs
+            return null
+          } else return null
+        })
         .catch(error => { throw new Error(error.message) }))
     }
-    if (!dogFinded || !dogFinded[0].image) throw new Error(`La raza de perro ${razaPerro} no está en la base de datos`)
+    console.log('dogFindedAPI:', dogFindedAPI)
+    console.log('dogFindedDB:', dogFindedDB)
+    const dogFinded = (dogFindedAPI && dogFindedAPI[0].image) ? dogFindedAPI : dogFindedDB || (dogFindedDB && dogFindedAPI) ? dogFindedDB : dogFindedAPI
+    if (!dogFinded) return res.status(200).send({ message: `La raza de perro ${razaPerro} no está en la base de datos` })
     return res.status(200).send(dogFinded)
   } catch (error) {
     res.status(400).send(error.message)
