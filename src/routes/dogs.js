@@ -134,7 +134,7 @@ router.get('/:razaPerro', async (req, res) => {
             name: dog.name,
             height: dog.height.imperial,
             weight: dog.weight.imperial,
-            lifeSpan: dog.lifeSpan,
+            lifeSpan: dog.life_span,
             temperament: dog.temperament,
             image: dog.reference_image_id && `https://cdn2.thedogapi.com/images/${dog.reference_image_id}.jpg`
           }))
