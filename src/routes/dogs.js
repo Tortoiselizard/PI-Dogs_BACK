@@ -39,21 +39,21 @@ router.put('/', async (req, res) => {
   const objectDogProperties = {
     name, height, weight, lifeSpan, image
   }
-  const numberId = Number(id.slice(0, id.indexOf('db')))
   try {
+    const numberId = Number(id.slice(0, id.indexOf('db')))
     await Dog.update(
       objectDogProperties,
       { where: { id: numberId } }
-    ).then(async () => {
-      if (Array.isArray(temperaments) && temperaments.length) {
-        const dog = await Dog.findOne({ where: { id: numberId } })
-        await dog.setTemperaments(temperaments)
-      }
-      res.status(200).send('El perro se ha modificado exitosamente')
-    })
-      .catch(error => { throw new Error(error.message) })
+    ).catch(error => { throw new Error(error.message) })
+    if (Array.isArray(temperaments)) {
+      const dog = await Dog.findOne({ where: { id: numberId } })
+        .catch(error => { throw new Error(error.message) })
+      await dog.setTemperaments(temperaments)
+        .catch(error => { throw new Error(error.message) })
+    }
+    return res.status(200).send({ message: `La raza ${name} se ha actualizado exitosamente` })
   } catch (error) {
-    res.status(400).json(error.message)
+    res.status(400).json({ message: error.message })
   }
 })
 
@@ -120,33 +120,37 @@ router.get('/', async (req, res) => {
 
 router.get('/:razaPerro', async (req, res) => {
   let { razaPerro } = req.params
+  const { location } = req.query
   razaPerro = razaPerro.trim()
   const RUTA = `https://api.thedogapi.com/v1/breeds/search?q=${razaPerro}&api_key=${YOUR_API_KEY}`
   let dogFindedAPI, dogFindedDB
   try {
-    dogFindedAPI = await request({
-      uri: RUTA,
-      json: true
-    })
-      .then(data => {
-        if (data.length) {
-          const listDogs = data.filter(dog => dog.name === razaPerro).map(dog => ({
-            id: dog.id,
-            name: dog.name,
-            height: dog.height.imperial,
-            weight: dog.weight.imperial,
-            lifeSpan: dog.life_span,
-            temperament: dog.temperament,
-            image: dog.reference_image_id && `https://cdn2.thedogapi.com/images/${dog.reference_image_id}.jpg`
-          }))
-          if (!listDogs.length) return null
-          return listDogs
-        } else {
-          return null
-        }
+    if (location === 'API' || !location) {
+      dogFindedAPI = await request({
+        uri: RUTA,
+        json: true
       })
-      .catch((error) => { throw new Error(error.message) })
-    if (!dogFindedAPI || !dogFindedAPI[0].image) {
+        .then(data => {
+          if (data.length) {
+            const listDogs = data.filter(dog => dog.name === razaPerro).map(dog => ({
+              id: dog.id,
+              name: dog.name,
+              height: dog.height.imperial,
+              weight: dog.weight.imperial,
+              lifeSpan: dog.life_span,
+              temperament: dog.temperament,
+              image: dog.reference_image_id && `https://cdn2.thedogapi.com/images/${dog.reference_image_id}.jpg`
+            }))
+            if (!listDogs.length) return null
+            return listDogs
+          } else {
+            return null
+          }
+        })
+        .catch((error) => { throw new Error(error.message) })
+    }
+
+    if ((!dogFindedAPI || !dogFindedAPI[0].image) && (location === 'DB' || !location)) {
       dogFindedDB = (await Dog.findAll({
         where: {
           name: {
@@ -173,10 +177,8 @@ router.get('/:razaPerro', async (req, res) => {
         })
         .catch(error => { throw new Error(error.message) }))
     }
-    console.log('dogFindedAPI:', dogFindedAPI)
-    console.log('dogFindedDB:', dogFindedDB)
     const dogFinded = (dogFindedAPI && dogFindedAPI[0].image) ? dogFindedAPI : dogFindedDB || (dogFindedDB && dogFindedAPI) ? dogFindedDB : dogFindedAPI
-    if (!dogFinded) return res.status(200).send({ message: `La raza de perro ${razaPerro} no está en la base de datos` })
+    if (!dogFinded) return res.status(200).send({ message: `La raza de perro ${razaPerro} no se encuentra registrada` })
     return res.status(200).send(dogFinded)
   } catch (error) {
     res.status(400).send(error.message)
