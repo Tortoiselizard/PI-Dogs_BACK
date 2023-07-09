@@ -8,14 +8,14 @@ const { YOUR_API_KEY } = process.env
 const router = Router()
 
 router.post('/', async (req, res) => {
-  const { name, height, weight, temperaments } = req.body
+  const { name, height, weight, temperament } = req.body
   try {
     if (name && height && weight) {
       const dog = await Dog.findAll({ where: { name } })
         .catch(error => { throw new Error(error.message) })
       if (dog.length) throw new Error(`El nombre de raza ${name} ya existe`)
-      if (temperaments.length) {
-        for (const t of temperaments) {
+      if (temperament.length) {
+        for (const t of temperament) {
           const temp = await Temperament.findAll({ where: { id: Number(t) } })
             .catch(error => { throw new Error(error.message) })
           if (!temp.length) throw new Error(`El temperamento ${t} no existe`)
@@ -23,7 +23,7 @@ router.post('/', async (req, res) => {
       }
       const newDog = await Dog.create({ ...req.body })
         .catch(error => { throw new Error(error.message) })
-      await newDog.addTemperaments(temperaments)
+      await newDog.addTemperaments(temperament)
         .catch(error => { throw new Error(error.message) })
       return res.status(200).send(newDog)
     } else {
@@ -35,7 +35,7 @@ router.post('/', async (req, res) => {
 })
 
 router.put('/', async (req, res) => {
-  const { id, name, height, weight, lifeSpan, image, temperaments } = req.body
+  const { id, name, height, weight, lifeSpan, image, temperament } = req.body
   const objectDogProperties = {
     name, height, weight, lifeSpan, image
   }
@@ -45,10 +45,10 @@ router.put('/', async (req, res) => {
       objectDogProperties,
       { where: { id: numberId } }
     ).catch(error => { throw new Error(error.message) })
-    if (Array.isArray(temperaments)) {
+    if (Array.isArray(temperament)) {
       const dog = await Dog.findOne({ where: { id: numberId } })
         .catch(error => { throw new Error(error.message) })
-      await dog.setTemperaments(temperaments)
+      await dog.setTemperaments(temperament)
         .catch(error => { throw new Error(error.message) })
     }
     return res.status(200).send({ message: `La raza ${name} se ha actualizado exitosamente` })
