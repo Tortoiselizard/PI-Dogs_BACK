@@ -78,7 +78,7 @@ router.get('/', async (req, res) => {
           id: dog.id,
           name: dog.name,
           breed_group: dog.breed_group,
-          lifeSpan: dog.lifeSpan,
+          lifeSpan: dog.life_span,
           temperament: dog.temperament,
           image: dog.image.url,
           weight: dog.weight.imperial,
